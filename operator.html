@@ -97,7 +97,7 @@
     <main class="max-w-5xl w-full mx-auto p-4 sm:p-6 flex-grow space-y-6">
 
       <!-- =================================================================== -->
-      <!-- TAB 1: ENTRI IURAN SATUAN & RIWAYAT TERBARU / VOID                  -->
+      <!-- TAB 1: ENTRI IURAN SATUAN, PULIHKAN VOID & RESET DATA SALAH         -->
       <!-- =================================================================== -->
       <section id="content-entri" class="space-y-6">
         <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
@@ -158,18 +158,30 @@
           <div id="formStatus" class="hidden p-3 rounded-xl text-xs text-center font-semibold"></div>
         </div>
 
-        <!-- Daftar 20 Transaksi Terbaru & Fitur Void Cepat -->
+        <!-- Daftar 25 Transaksi Terbaru & Fitur Koreksi / Reset Operator Pemula -->
         <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div>
-              <h3 class="text-sm font-bold text-slate-900">Riwayat 20 Transaksi Masuk Terbaru</h3>
-              <p class="text-xs text-slate-400">Klik tombol <strong>Void</strong> jika terjadi kesalahan entri untuk membatalkan transaksi secara otomatis.</p>
+              <h3 class="text-sm font-bold text-slate-900">Riwayat 25 Transaksi Masuk Terbaru & Koreksi</h3>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Gunakan <strong>Pulihkan</strong> jika salah klik Void, atau ikon <strong>Hapus (<i class="fa-solid fa-trash-can text-rose-500"></i>)</strong> untuk mereset entri yang salah.
+              </p>
             </div>
+            <button onclick="resetEntriHariIni()" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold px-3 py-2 rounded-xl transition cursor-pointer shrink-0 flex items-center gap-1.5">
+              <i class="fa-solid fa-rotate-left"></i> <span>Reset Entri Uji Coba Hari Ini</span>
+            </button>
+          </div>
+
+          <!-- Cari ID Manual untuk Void / Pulihkan / Hapus -->
+          <div class="flex flex-col sm:flex-row gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <input type="text" id="inputVoidId" placeholder="Cari atau ketik ID Transaksi (contoh: TRX-1A2B3C4D)..." class="flex-grow px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs">
             <div class="flex gap-2">
-              <input type="text" id="inputVoidId" placeholder="Atau ketik ID TRX-..." class="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs">
-              <button onclick="prosesVoidManual()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">Void ID</button>
+              <button onclick="prosesVoidManual()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition cursor-pointer">Void ID</button>
+              <button onclick="prosesPulihkanManual()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition cursor-pointer">Pulihkan ID</button>
+              <button onclick="prosesHapusManual()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition cursor-pointer">Hapus ID</button>
             </div>
           </div>
+
           <div id="voidStatus" class="hidden p-2.5 rounded-xl text-xs text-center font-semibold"></div>
 
           <div class="overflow-x-auto">
@@ -181,7 +193,7 @@
                   <th class="px-3 py-2.5">Rumah / Warga</th>
                   <th class="px-3 py-2.5">Periode</th>
                   <th class="px-3 py-2.5 text-right">Nominal</th>
-                  <th class="px-3 py-2.5 rounded-r-lg text-center">Aksi</th>
+                  <th class="px-3 py-2.5 rounded-r-lg text-center">Koreksi / Reset</th>
                 </tr>
               </thead>
               <tbody id="recentTrxBody" class="divide-y divide-slate-100 text-slate-700"></tbody>
@@ -337,7 +349,10 @@
           <div id="keluarStatus" class="hidden p-3 rounded-xl text-xs text-center font-semibold"></div>
 
           <div class="border-t border-slate-100 pt-5 space-y-3">
-            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Riwayat Pengeluaran (Kas Keluar)</h4>
+            <div class="flex justify-between items-center">
+              <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Riwayat Pengeluaran (Kas Keluar)</h4>
+              <span class="text-[11px] text-slate-400">Klik ikon tempat sampah untuk menghapus/mereset entri salah</span>
+            </div>
             <div class="overflow-x-auto">
               <table class="min-w-full text-xs text-left">
                 <thead class="bg-slate-50 text-slate-500 font-bold uppercase">
@@ -346,7 +361,7 @@
                     <th class="px-3 py-2.5">Kategori</th>
                     <th class="px-3 py-2.5">Keterangan Detail</th>
                     <th class="px-3 py-2.5 text-right">Nominal</th>
-                    <th class="px-3 py-2.5 rounded-r-lg text-center">Hapus</th>
+                    <th class="px-3 py-2.5 rounded-r-lg text-center">Reset / Hapus</th>
                   </tr>
                 </thead>
                 <tbody id="tableBodyKasKeluar" class="divide-y divide-slate-100 text-slate-700"></tbody>
@@ -574,7 +589,6 @@
     let cacheKeluar = [];
     let unsubWarga = null, unsubTrx = null, unsubKeluar = null;
 
-    // Helper: Format Tanggal Hari Ini YYYY-MM-DD (Lokal)
     function getTodayDateString() {
       const d = new Date();
       const yyyy = d.getFullYear();
@@ -583,7 +597,6 @@
       return `${yyyy}-${mm}-${dd}`;
     }
 
-    // Helper: Konversi YYYY-MM-DD ke Date Pukul 12:00 Siang (Bebas Geser Zona Waktu)
     function dateInputToLocalNoon(dateStr) {
       if (!dateStr) return new Date();
       const [y, m, d] = dateStr.split('-').map(Number);
@@ -607,7 +620,18 @@
       return 'Rp ' + (Number(num) || 0).toLocaleString('id-ID');
     }
 
-    // Inisialisasi Nilai Default Form Tanggal & Bulan
+    function showVoidFeedback(msg, type) {
+      const statusDiv = document.getElementById('voidStatus');
+      statusDiv.textContent = msg;
+      if (type === 'success') {
+        statusDiv.className = "p-2.5 rounded-xl text-xs text-center font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 block";
+      } else if (type === 'warning') {
+        statusDiv.className = "p-2.5 rounded-xl text-xs text-center font-semibold bg-amber-50 text-amber-700 border border-amber-200 block";
+      } else {
+        statusDiv.className = "p-2.5 rounded-xl text-xs text-center font-semibold bg-rose-50 text-rose-700 border border-rose-200 block";
+      }
+    }
+
     function initDefaultDates() {
       const todayStr = getTodayDateString();
       document.getElementById('inputTanggalBayar').value = todayStr;
@@ -725,7 +749,7 @@
     }
 
     // =========================================================================
-    // 3. TAB 1: ENTRI IURAN SATUAN & VOID
+    // 3. TAB 1: ENTRI IURAN SATUAN, VOID, PULIHKAN & RESET
     // =========================================================================
     window.aturNominalOtomatis = function() {
       const tipe = document.getElementById('tipeIuran').value;
@@ -748,7 +772,6 @@
       const wargaObj = cacheWarga.find(w => (w.noRumahClean || w.noRumah.replace(/\s+/g, '').toLowerCase()).trim() === cleanNo);
       const jenisWarga = wargaObj ? (wargaObj.jenisWarga || 'Tetap') : 'Tetap';
 
-      // Validasi Bisnis (Sama dengan aturan Apps Script lama)
       const trxAktifWarga = cacheTrx.filter(t =>
         (t.statusTrx || 'Aktif') === 'Aktif' &&
         (t.noRumahClean || t.noRumah.replace(/\s+/g, '').toLowerCase()).trim() === cleanNo
@@ -820,28 +843,35 @@
       const namaMap = {};
       cacheWarga.forEach(w => { namaMap[w.noRumahClean || w.noRumah.replace(/\s+/g, '').toLowerCase()] = w.namaKk; });
 
-      const top20 = cacheTrx.slice(0, 20);
-      if (top20.length === 0) {
+      const top25 = cacheTrx.slice(0, 25);
+      if (top25.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="px-3 py-4 text-center text-slate-400 italic">Belum ada data transaksi.</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = top20.map(t => {
+      tbody.innerHTML = top25.map(t => {
         const isVoid = (t.statusTrx || 'Aktif') === 'Dibatalkan';
         const clean = (t.noRumahClean || t.noRumah.replace(/\s+/g, '').toLowerCase()).trim();
         const nama = namaMap[clean] || '-';
         const tglStr = t.jsDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
         return `
-          <tr class="${isVoid ? 'bg-rose-50/50 text-slate-400 line-through' : 'hover:bg-slate-50'}">
-            <td class="px-3 py-2.5 whitespace-nowrap font-medium">${tglStr}</td>
-            <td class="px-3 py-2.5 font-mono text-[11px]">${t.idTransaksi}</td>
-            <td class="px-3 py-2.5"><strong>${t.noRumah}</strong> - ${nama}</td>
-            <td class="px-3 py-2.5">${t.tipeIuran} (${t.bulan} ${t.tahun})</td>
-            <td class="px-3 py-2.5 text-right font-bold whitespace-nowrap">${formatRupiah(t.nominal)}</td>
-            <td class="px-3 py-2.5 text-center">
+          <tr class="${isVoid ? 'bg-rose-50/40 text-slate-400' : 'hover:bg-slate-50'}">
+            <td class="px-3 py-2.5 whitespace-nowrap font-medium ${isVoid ? 'line-through' : ''}">${tglStr}</td>
+            <td class="px-3 py-2.5 font-mono text-[11px] ${isVoid ? 'line-through' : ''}">${t.idTransaksi}</td>
+            <td class="px-3 py-2.5 ${isVoid ? 'line-through' : ''}"><strong>${t.noRumah}</strong> - ${nama}</td>
+            <td class="px-3 py-2.5 ${isVoid ? 'line-through' : ''}">${t.tipeIuran} (${t.bulan} ${t.tahun})</td>
+            <td class="px-3 py-2.5 text-right font-bold whitespace-nowrap ${isVoid ? 'line-through' : ''}">${formatRupiah(t.nominal)}</td>
+            <td class="px-3 py-2.5 text-center whitespace-nowrap space-x-1">
               ${isVoid
-                ? '<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-rose-100 text-rose-700">VOID</span>'
-                : `<button onclick="eksekusiVoid('${t.idTransaksi}')" class="px-2.5 py-1 text-[11px] font-bold rounded-md bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 transition cursor-pointer">Void</button>`}
+                ? `<button onclick="pulihkanVoid('${t.idTransaksi}')" class="px-2 py-1 text-[11px] font-bold rounded-md bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 transition cursor-pointer" title="Batalkan status Void dan kembalikan saldo">
+                     <i class="fa-solid fa-rotate-left mr-0.5"></i> Pulihkan
+                   </button>`
+                : `<button onclick="eksekusiVoid('${t.idTransaksi}')" class="px-2 py-1 text-[11px] font-bold rounded-md bg-amber-50 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-200 transition cursor-pointer" title="Batalkan sementara (Void)">
+                     Void
+                   </button>`}
+              <button onclick="hapusPermanenTrx('${t.idTransaksi}')" class="px-2 py-1 text-[11px] font-bold rounded-md bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 transition cursor-pointer" title="Hapus permanen jika salah input">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
             </td>
           </tr>
         `;
@@ -854,17 +884,26 @@
       window.eksekusiVoid(id);
     };
 
+    window.prosesPulihkanManual = function() {
+      const id = document.getElementById('inputVoidId').value.trim().toUpperCase();
+      if (!id) return;
+      window.pulihkanVoid(id);
+    };
+
+    window.prosesHapusManual = function() {
+      const id = document.getElementById('inputVoidId').value.trim().toUpperCase();
+      if (!id) return;
+      window.hapusPermanenTrx(id);
+    };
+
     window.eksekusiVoid = async function(idTrx) {
-      const statusDiv = document.getElementById('voidStatus');
       const target = cacheTrx.find(t => t.idTransaksi.toUpperCase() === idTrx.toUpperCase());
       if (!target) {
-        statusDiv.textContent = `ID Transaksi "${idTrx}" tidak ditemukan di database.`;
-        statusDiv.className = "p-2.5 rounded-xl text-xs text-center font-semibold bg-rose-50 text-rose-700 block";
+        showVoidFeedback(`ID Transaksi "${idTrx}" tidak ditemukan di database.`, 'error');
         return;
       }
       if ((target.statusTrx || 'Aktif') === 'Dibatalkan') {
-        statusDiv.textContent = `Transaksi ${idTrx} sudah dibatalkan sebelumnya.`;
-        statusDiv.className = "p-2.5 rounded-xl text-xs text-center font-semibold bg-amber-50 text-amber-700 block";
+        showVoidFeedback(`Transaksi ${idTrx} sudah berstatus Void.`, 'warning');
         return;
       }
       if (!confirm(`Batalkan (Void) transaksi ${idTrx} milik ${target.noRumah} sebesar ${formatRupiah(target.nominal)}?`)) return;
@@ -876,11 +915,78 @@
           waktuVoid: new Date().toISOString()
         });
         document.getElementById('inputVoidId').value = '';
-        statusDiv.textContent = `Sukses! Transaksi ${target.idTransaksi} telah dibatalkan (Void). Saldo kas otomatis disesuaikan.`;
-        statusDiv.className = "p-2.5 rounded-xl text-xs text-center font-semibold bg-emerald-50 text-emerald-700 block";
+        showVoidFeedback(`Sukses! Transaksi ${target.idTransaksi} diubah menjadi Void. Jika salah klik, tekan "Pulihkan".`, 'success');
       } catch (err) {
-        statusDiv.textContent = "Gagal Void: " + err.message;
-        statusDiv.className = "p-2.5 rounded-xl text-xs text-center font-semibold bg-rose-50 text-rose-700 block";
+        showVoidFeedback("Gagal Void: " + err.message, 'error');
+      }
+    };
+
+    window.pulihkanVoid = async function(idTrx) {
+      const target = cacheTrx.find(t => t.idTransaksi.toUpperCase() === idTrx.toUpperCase());
+      if (!target) {
+        showVoidFeedback(`ID Transaksi "${idTrx}" tidak ditemukan.`, 'error');
+        return;
+      }
+      if ((target.statusTrx || 'Aktif') === 'Aktif') {
+        showVoidFeedback(`Transaksi ${idTrx} sudah berstatus Aktif.`, 'warning');
+        return;
+      }
+      if (!confirm(`Pulihkan kembali transaksi ${idTrx} milik ${target.noRumah} (${formatRupiah(target.nominal)}) menjadi AKTIF?`)) return;
+
+      try {
+        await updateDoc(doc(db, 'Transaksi_Iuran', target.idTransaksi), {
+          statusTrx: 'Aktif',
+          dipulihkanOleh: currentUserEmail,
+          waktuPulihkan: new Date().toISOString()
+        });
+        document.getElementById('inputVoidId').value = '';
+        showVoidFeedback(`Sukses! Transaksi ${target.idTransaksi} telah dipulihkan menjadi AKTIF dan saldo kas kembali bertambah.`, 'success');
+      } catch (err) {
+        showVoidFeedback("Gagal memulihkan: " + err.message, 'error');
+      }
+    };
+
+    window.hapusPermanenTrx = async function(idTrx) {
+      const target = cacheTrx.find(t => t.idTransaksi.toUpperCase() === idTrx.toUpperCase());
+      if (!target) {
+        showVoidFeedback(`ID Transaksi "${idTrx}" tidak ditemukan.`, 'error');
+        return;
+      }
+      if (!confirm(`HAPUS PERMANEN transaksi ${target.idTransaksi} (${target.noRumah} - ${target.bulan} ${target.tahun} sebesar ${formatRupiah(target.nominal)})?\n\nData akan dihapus bersih dari database dan total saldo kas akan disesuaikan otomatis.`)) return;
+
+      try {
+        await deleteDoc(doc(db, 'Transaksi_Iuran', target.idTransaksi));
+        document.getElementById('inputVoidId').value = '';
+        showVoidFeedback(`Berhasil direset! Transaksi ${target.idTransaksi} telah dihapus permanen dari database.`, 'success');
+      } catch (err) {
+        showVoidFeedback("Gagal menghapus: " + err.message, 'error');
+      }
+    };
+
+    window.resetEntriHariIni = async function() {
+      const todayStr = getTodayDateString();
+      const entriHariIni = cacheTrx.filter(t => t.waktuInputSistem && t.waktuInputSistem.startsWith(todayStr));
+
+      if (entriHariIni.length === 0) {
+        showVoidFeedback("Tidak ada transaksi baru yang diinput hari ini untuk direset.", 'warning');
+        return;
+      }
+
+      const konfirmasi = prompt(`Ditemukan ${entriHariIni.length} transaksi yang diinput ke sistem pada hari ini.\n\nKetik kata RESET untuk menghapus seluruh entri uji coba hari ini (data historis lama tetap aman):`);
+      if (!konfirmasi || konfirmasi.trim().toUpperCase() !== 'RESET') {
+        showVoidFeedback("Proses reset dibatalkan.", 'warning');
+        return;
+      }
+
+      try {
+        const batch = writeBatch(db);
+        entriHariIni.forEach(t => {
+          batch.delete(doc(db, 'Transaksi_Iuran', t.idTransaksi));
+        });
+        await batch.commit();
+        showVoidFeedback(`Sukses! ${entriHariIni.length} transaksi input hari ini berhasil direset bersih.`, 'success');
+      } catch (err) {
+        showVoidFeedback("Gagal melakukan reset: " + err.message, 'error');
       }
     };
 
@@ -903,7 +1009,6 @@
 
       document.getElementById('checkAllWarga').checked = false;
 
-      // Map pembayaran bulanan aktif pada periode ini
       const bayarMap = {};
       cacheTrx.forEach(t => {
         if ((t.statusTrx || 'Aktif') === 'Aktif' &&
@@ -1002,7 +1107,6 @@
 
         checked.forEach(cb => {
           const item = currentRekapList[Number(cb.value)];
-          // Cek duplikat sekali lagi
           const sudahAda = cacheTrx.some(t =>
             (t.statusTrx || 'Aktif') === 'Aktif' &&
             (t.noRumahClean || t.noRumah.replace(/\s+/g, '').toLowerCase()).trim() === item.clean &&
@@ -1124,7 +1228,7 @@
           <td class="px-3 py-2.5 text-slate-700 font-medium">${item.keterangan}</td>
           <td class="px-3 py-2.5 text-right font-bold text-rose-600 whitespace-nowrap">${formatRupiah(item.nominal)}</td>
           <td class="px-3 py-2.5 text-center">
-            <button onclick="hapusKasKeluar('${item.idKeluar}', '${item.keterangan.replace(/'/g, '')}')" class="text-slate-400 hover:text-rose-600 cursor-pointer" title="Hapus catatan ini">
+            <button onclick="hapusKasKeluar('${item.idKeluar}', '${item.keterangan.replace(/'/g, '')}')" class="px-2 py-1 text-[11px] font-bold rounded-md bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 transition cursor-pointer" title="Hapus permanen catatan pengeluaran ini">
               <i class="fa-solid fa-trash-can"></i>
             </button>
           </td>
@@ -1133,7 +1237,7 @@
     }
 
     window.hapusKasKeluar = async function(idKeluar, ket) {
-      if (!confirm(`Hapus catatan pengeluaran "${ket}" (${idKeluar})? Saldo kas akan otomatis dikembalikan.`)) return;
+      if (!confirm(`HAPUS PERMANEN catatan pengeluaran "${ket}" (${idKeluar})?\n\nTotal pengeluaran akan otomatis berkurang dan saldo kas akan kembali.`)) return;
       await deleteDoc(doc(db, 'Kas_Keluar', idKeluar));
     };
 
@@ -1326,7 +1430,6 @@
       let saldoAwal = 0;
       const mutasi = [];
 
-      // Kumpulkan Pemasukan Aktif
       cacheTrx.forEach(t => {
         if ((t.statusTrx || 'Aktif') !== 'Aktif') return;
         const thn = String(t.jsDate.getFullYear());
@@ -1346,7 +1449,6 @@
         });
       });
 
-      // Kumpulkan Pengeluaran
       cacheKeluar.forEach(k => {
         const thn = String(k.jsDate.getFullYear());
         const nom = Number(k.nominal) || 0;
@@ -1364,7 +1466,6 @@
         });
       });
 
-      // Urutkan kronologis terlama ke terbaru
       mutasi.sort((a, b) => a.date - b.date);
 
       const rows = [
