@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alat Migrasi Excel ke Firebase - RUKEM GBP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Pustaka SheetJS untuk membaca file Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen p-4 sm:p-8">
+
+  <div class="max-w-3xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-md flex items-center justify-between">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">Tahap 2 • Utilitas Migrasi</span>
+        <h1 class="text-xl font-bold mt-1">Migrasi Data Excel Lama ke Firebase</h1>
+        <p class="text-xs text-slate-400 mt-1">Database Target: <strong class="text-white">rukem-gbp</strong> (asia-southeast2)</p>
+      </div>
+      <div class="bg-emerald-600/20 border border-emerald-500/30 p-3 rounded-xl text-emerald-400">
+        <i class="fa-solid fa-database text-2xl"></i>
+      </div>
+    </div>
+
+    <!-- Step 1: Login Operator -->
+    <div id="authCard" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">1. Autentikasi Operator Firebase</h2>
+        <span id="authBadge" class="px-2.5 py-1 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200">Belum Login</span>
+      </div>
+
+      <form id="loginForm" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <input type="email" id="loginEmail" placeholder="Email Operator (admin@...)" class="px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" required>
+        <input type="password" id="loginPass" placeholder="Password Firebase" class="px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" required>
+        <button type="submit" id="btnLogin" class="bg-slate-900 hover:bg-emerald-600 text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition cursor-pointer">
+          <i class="fa-solid fa-right-to-bracket mr-1"></i> Login Operator
+        </button>
+      </form>
+      <div id="authMessage" class="hidden text-xs font-medium p-3 rounded-xl"></div>
+    </div>
+
+    <!-- Step 2: Upload & Eksekusi Migrasi -->
+    <div id="migrationCard" class="hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+      <div class="border-b border-slate-100 pb-3">
+        <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider">2. Pilih File Excel Cadangan Google Sheets</h2>
+        <p class="text-xs text-slate-500 mt-1">Pilih file <code>.xlsx</code> yang berisi ketiga sheet (<code>Master_Warga</code>, <code>Kas_Keluar</code>, <code>Transaksi_Iuran</code>). Sistem menggunakan ID unik setiap baris sehingga aman jika dijalankan ulang tanpa menduplikasi data.</p>
+      </div>
+
+      <div class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center bg-slate-50 hover:bg-slate-100/70 transition">
+        <i class="fa-solid fa-file-excel text-4xl text-emerald-600 mb-3"></i>
+        <p class="text-sm font-semibold text-slate-700 mb-2">Pilih File Excel (.xlsx)</p>
+        <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="block w-full max-w-xs mx-auto text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer">
+      </div>
+
+      <!-- Pratinjau Jumlah Data -->
+      <div id="previewBox" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 text-center">
+          <div class="text-xs font-bold text-blue-700 uppercase">Master_Warga</div>
+          <div id="countWarga" class="text-2xl font-extrabold text-blue-900 mt-1">0</div>
+          <div class="text-xs text-blue-600">baris siap migrasi</div>
+        </div>
+        <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-center">
+          <div class="text-xs font-bold text-rose-700 uppercase">Kas_Keluar</div>
+          <div id="countKeluar" class="text-2xl font-extrabold text-rose-900 mt-1">0</div>
+          <div class="text-xs text-rose-600">baris siap migrasi</div>
+        </div>
+        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+          <div class="text-xs font-bold text-emerald-700 uppercase">Transaksi_Iuran</div>
+          <div id="countTrx" class="text-2xl font-extrabold text-emerald-900 mt-1">0</div>
+          <div class="text-xs text-emerald-600">baris siap migrasi</div>
+        </div>
+      </div>
+
+      <button id="btnStartMigration" disabled class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-sm py-3 rounded-xl transition shadow-sm cursor-pointer">
+        <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Mulai Migrasi Semua Data ke Firebase
+      </button>
+
+      <!-- Progress & Log -->
+      <div id="progressSection" class="hidden space-y-2">
+        <div class="flex justify-between text-xs font-bold text-slate-600">
+          <span id="progressLabel">Memproses...</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+          <div id="progressBar" class="bg-emerald-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+        <pre id="migrationLog" class="bg-slate-900 text-emerald-400 text-xs p-4 rounded-xl max-h-56 overflow-y-auto font-mono leading-relaxed"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Modular SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+    import { getFirestore, doc, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB5lth5fRPlsyR5hUjKVA1OwU29Avl6zEk",
+      authDomain: "rukem-gbp.firebaseapp.com",
+      projectId: "rukem-gbp",
+      storageBucket: "rukem-gbp.firebasestorage.app",
+      messagingSenderId: "214628126719",
+      appId: "1:214628126719:web:b6587f10a76603a37621ca"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let parsedWarga = [];
+    let parsedKeluar = [];
+    let parsedTrx = [];
+
+    // Monitor Status Login
+    onAuthStateChanged(auth, (user) => {
+      const badge = document.getElementById('authBadge');
+      const migCard = document.getElementById('migrationCard');
+      if (user) {
+        badge.textContent = "Terautentikasi: " + user.email;
+        badge.className = "px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
+        migCard.classList.remove('hidden');
+      } else {
+        badge.textContent = "Belum Login";
+        badge.className = "px-2.5 py-1 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200";
+        migCard.classList.add('hidden');
+      }
+    });
+
+    // Proses Login
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      const pass = document.getElementById('loginPass').value;
+      const msgDiv = document.getElementById('authMessage');
+      const btn = document.getElementById('btnLogin');
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-1"></i> Memeriksa...';
+      msgDiv.classList.add('hidden');
+
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        msgDiv.textContent = "Login berhasil! Silakan pilih file Excel di bawah ini.";
+        msgDiv.className = "text-xs font-medium p-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 block";
+      } catch (err) {
+        msgDiv.textContent = "Gagal login: " + err.message;
+        msgDiv.className = "text-xs font-medium p-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 block";
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-right-to-bracket mr-1"></i> Login Operator';
+      }
+    });
+
+    // Helper Konversi Tanggal Excel ke JS Date
+    function parseExcelDate(val) {
+      if (!val) return new Date();
+      if (val instanceof Date) return val;
+      if (typeof val === 'number') {
+        // Konversi serial date Excel
+        return new Date(Math.round((val - 25569) * 86400 * 1000));
+      }
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? new Date() : d;
+    }
+
+    // Helper Normalisasi RT/RW
+    function cleanRtRw(val) {
+      if (!val) return "";
+      if (val instanceof Date) {
+        const mm = String(val.getMonth() + 1).padStart(2, '0');
+        const dd = String(val.getDate()).padStart(2, '0');
+        return `${mm} / ${dd}`;
+      }
+      return String(val).trim();
+    }
+
+    // Baca File Excel Saat Dipilih
+    document.getElementById('excelFileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+
+        // 1. Parse Master_Warga
+        const rawWarga = workbook.Sheets['Master_Warga'] ? XLSX.utils.sheet_to_json(workbook.Sheets['Master_Warga']) : [];
+        parsedWarga = rawWarga.filter(r => r.No_Rumah).map(r => ({
+          noRumah: String(r.No_Rumah).trim(),
+          noRumahClean: String(r.No_Rumah).replace(/\s+/g, '').toLowerCase().trim(),
+          namaKk: r.Nama_KK ? String(r.Nama_KK).trim() : "-",
+          rtRw: cleanRtRw(r.RT_RW),
+          jenisWarga: r.Jenis_Warga ? String(r.Jenis_Warga).trim() : "Tetap",
+          status: r.Status ? String(r.Status).trim() : "Aktif"
+        }));
+
+        // 2. Parse Kas_Keluar
+        const rawKeluar = workbook.Sheets['Kas_Keluar'] ? XLSX.utils.sheet_to_json(workbook.Sheets['Kas_Keluar']) : [];
+        parsedKeluar = rawKeluar.filter(r => r.ID_Keluar || r.Nominal).map((r, idx) => {
+          const dt = parseExcelDate(r.Timestamp);
+          return {
+            idKeluar: r.ID_Keluar ? String(r.ID_Keluar).trim() : `OUT-MIG-${idx + 1}`,
+            timestamp: Timestamp.fromDate(dt),
+            tanggalIso: dt.toISOString(),
+            tahun: dt.getFullYear(),
+            bulanIndex: dt.getMonth() + 1,
+            kategori: r.Kategori ? String(r.Kategori).trim() : "Lain-lain / Sosial",
+            keterangan: r.Keterangan ? String(r.Keterangan).trim() : "-",
+            nominal: Number(r.Nominal) || 0,
+            operator: r.Operator ? String(r.Operator).trim() : "Pengelola Kas"
+          };
+        });
+
+        // 3. Parse Transaksi_Iuran
+        const rawTrx = workbook.Sheets['Transaksi_Iuran'] ? XLSX.utils.sheet_to_json(workbook.Sheets['Transaksi_Iuran']) : [];
+        parsedTrx = rawTrx.filter(r => r.No_Rumah).map((r, idx) => {
+          const dt = parseExcelDate(r.Timestamp);
+          return {
+            idTransaksi: r.ID_Transaksi ? String(r.ID_Transaksi).trim() : `TRX-MIG-${idx + 1}`,
+            timestamp: Timestamp.fromDate(dt),
+            tanggalIso: dt.toISOString(),
+            noRumah: String(r.No_Rumah).trim(),
+            noRumahClean: String(r.No_Rumah).replace(/\s+/g, '').toLowerCase().trim(),
+            bulan: r.Bulan ? String(r.Bulan).trim() : "-",
+            tahun: Number(r.Tahun) || dt.getFullYear(),
+            tipeIuran: r.Tipe_Iuran ? String(r.Tipe_Iuran).trim() : "Bulanan",
+            nominal: Number(r.Nominal) || 0,
+            operator: r.Operator ? String(r.Operator).trim() : "Operator",
+            statusTrx: r.Status_Trx ? String(r.Status_Trx).trim() : "Aktif"
+          };
+        });
+
+        document.getElementById('countWarga').textContent = parsedWarga.length;
+        document.getElementById('countKeluar').textContent = parsedKeluar.length;
+        document.getElementById('countTrx').textContent = parsedTrx.length;
+        document.getElementById('previewBox').classList.remove('hidden');
+        document.getElementById('btnStartMigration').disabled = false;
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // Helper Write Batch dalam potongan 400 dokumen (Batas Firestore = 500)
+    async function commitInChunks(collectionName, items, getDocId, logFn, updateProgressFn) {
+      const chunkSize = 400;
+      for (let i = 0; i < items.length; i += chunkSize) {
+        const chunk = items.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+        chunk.forEach(item => {
+          const safeId = getDocId(item).replace(/\//g, '_');
+          const ref = doc(db, collectionName, safeId);
+          batch.set(ref, item);
+        });
+        await batch.commit();
+        logFn(`✔ [${collectionName}] Tersimpan ${Math.min(i + chunkSize, items.length)} / ${items.length} data`);
+        updateProgressFn(chunk.length);
+      }
+    }
+
+    // Eksekusi Migrasi
+    document.getElementById('btnStartMigration').addEventListener('click', async () => {
+      const btn = document.getElementById('btnStartMigration');
+      const progSec = document.getElementById('progressSection');
+      const progBar = document.getElementById('progressBar');
+      const progPct = document.getElementById('progressPercent');
+      const progLbl = document.getElementById('progressLabel');
+      const logEl = document.getElementById('migrationLog');
+
+      const totalItems = parsedWarga.length + parsedKeluar.length + parsedTrx.length;
+      if (totalItems === 0) return;
+
+      btn.disabled = true;
+      progSec.classList.remove('hidden');
+      logEl.textContent = "Memulai proses migrasi ke Firestore...\n";
+
+      let processed = 0;
+      const log = (msg) => {
+        logEl.textContent += msg + "\n";
+        logEl.scrollTop = logEl.scrollHeight;
+      };
+      const updateProgress = (added) => {
+        processed += added;
+        const pct = Math.round((processed / totalItems) * 100);
+        progBar.style.width = pct + "%";
+        progPct.textContent = pct + "%";
+      };
+
+      try {
+        progLbl.textContent = "Mengunggah Master_Warga...";
+        await commitInChunks('Master_Warga', parsedWarga, (item) => item.noRumahClean, log, updateProgress);
+
+        progLbl.textContent = "Mengunggah Kas_Keluar...";
+        await commitInChunks('Kas_Keluar', parsedKeluar, (item) => item.idKeluar, log, updateProgress);
+
+        progLbl.textContent = "Mengunggah Transaksi_Iuran...";
+        await commitInChunks('Transaksi_Iuran', parsedTrx, (item) => item.idTransaksi, log, updateProgress);
+
+        // Hitung ringkasan verifikasi saldo
+        const totalMasuk = parsedTrx.filter(t => t.statusTrx === 'Aktif').reduce((acc, cur) => acc + cur.nominal, 0);
+        const totalKeluar = parsedKeluar.reduce((acc, cur) => acc + cur.nominal, 0);
+        const saldoAkhir = totalMasuk - totalKeluar;
+
+        progLbl.textContent = "Migrasi Selesai 100%!";
+        log("\n==========================================");
+        log("MIGRASI BERHASIL SEMPURNA!");
+        log(`Total Pemasukan Aktif : Rp ${totalMasuk.toLocaleString('id-ID')}`);
+        log(`Total Kas Keluar      : Rp ${totalKeluar.toLocaleString('id-ID')}`);
+        log(`Saldo Akhir Kas       : Rp ${saldoAkhir.toLocaleString('id-ID')}`);
+        log("==========================================");
+      } catch (err) {
+        progLbl.textContent = "Terjadi Kesalahan!";
+        log("\n✖ ERROR: " + err.message);
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
