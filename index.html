@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal Warga - Rukun Kematian GBP</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SheetJS (Excel Export) & jsPDF (PDF Export) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <!-- Google Fonts untuk Tema Buku Kas (Ledger) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #printArea, #printArea * { visibility: visible; }
+      #printArea { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+
+    /* CSS TEMA 2 (BUKU KAS / LEDGER) */
+    .theme-ledger {
+      --paper:#F6F1E3; --paper-line:#E4DBC3; --card:#FFFDF7; --ink:#1E2A22; --ink-soft:#5C6A5F;
+      --pine:#1F4A3B; --pine-deep:#15332A; --brass:#9B7327; --brass-light:#C9A24B;
+      --credit:#2E6B54; --debit:#A13D3D; --rule:#D8CFB4; --radius:10px;
+      background:var(--paper);
+      background-image: repeating-linear-gradient(transparent, transparent 37px, var(--paper-line) 38px);
+      color:var(--ink); font-family:'Inter',sans-serif; padding: 24px; border-radius: 16px;
+    }
+    .theme-ledger .tl-eyebrow { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--brass); font-weight:600; margin-bottom:4px; }
+    .theme-ledger .tl-title { font-family:'Fraunces',serif; font-weight:600; font-size:22px; color:var(--pine-deep); }
+    .theme-ledger .tl-grid { display:grid; grid-template-columns:1fr 1fr 1.3fr; gap:16px; margin-top:16px; }
+    .theme-ledger .tl-card { background:var(--card); border:1px solid var(--rule); border-radius:var(--radius); padding:20px; }
+    .theme-ledger .tl-label { font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); font-weight:600; margin-bottom:8px; }
+    .theme-ledger .tl-amount { font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; }
+    .theme-ledger .tl-saldo { background:var(--pine-deep); color:#F6F1E3; position:relative; overflow:hidden; }
+    .theme-ledger .tl-saldo .tl-label { color:#B9C9BE; }
+    .theme-ledger .tl-saldo .tl-amount { color:#F6F1E3; font-size:26px; }
+    .theme-ledger .tl-stamp { position:absolute; right:14px; top:14px; width:74px; height:74px; border:2px solid var(--brass-light); border-radius:50%; display:flex; align-items:center; justify-content:center; text-align:center; transform:rotate(-11deg); color:var(--brass-light); font-family:'IBM Plex Mono',monospace; font-size:8px; font-weight:600; line-height:1.3; padding:5px; opacity:.85; }
+    .theme-ledger .tl-month-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; }
+    .theme-ledger .tl-month-card { border-radius:var(--radius); padding:16px 20px; border:1px dashed var(--rule); background:var(--card); display:flex; flex-direction:column; }
+    .theme-ledger .tl-month-card.in { border-color:#BEDACC; background:#F1F7F2; }
+    .theme-ledger .tl-month-card.out { border-color:#E6C6C6; background:#FBF1F0; }
+    .theme-ledger .tl-detail-list { margin-top:12px; padding-top:10px; border-top:1px solid var(--rule); max-height:130px; overflow-y:auto; }
+    .theme-ledger .tl-detail-item { font-size:12px; color:var(--ink-soft); display:flex; justify-content:space-between; margin-bottom:4px; font-family:'IBM Plex Mono',monospace; }
+    .theme-ledger .tl-stat-card { background:var(--card); border:1px solid var(--rule); border-radius:var(--radius); padding:16px 18px; }
+    .theme-ledger .tl-stat-num { font-family:'Fraunces',serif; font-size:30px; font-weight:600; color:var(--pine-deep); margin:4px 0 2px; }
+
+    .lookup-ledger { background:#FFFDF7; border:1px solid #D8CFB4; border-radius:12px; padding:28px 24px; position:relative; box-shadow:0 1px 0 #D8CFB4, 0 8px 24px -16px rgba(30,42,34,.25); }
+    .lookup-ledger::before { content:""; position:absolute; left:0; top:20px; bottom:20px; width:4px; background:repeating-linear-gradient(180deg, #9B7327 0 6px, transparent 6px 12px); border-radius:0 4px 4px 0; }
+    .lookup-inner-ledger { text-align:center; max-width:560px; margin:0 auto; }
+    .lookup-inner-ledger h3 { font-family:'Fraunces',serif; font-size:24px; font-weight:600; color:#15332A; margin-bottom:6px; }
+    .lookup-inner-ledger p { font-size:13.5px; color:#5C6A5F; line-height:1.5; margin-bottom:18px; }
+
+    .result-ledger { background:#FFFDF7; border:1px solid #D8CFB4; border-radius:12px; padding:26px; position:relative; box-shadow:0 1px 0 #D8CFB4, 0 8px 24px -16px rgba(30,42,34,.25); }
+    .rl-eyebrow { font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:#9B7327; font-weight:600; }
+    .rl-name { font-family:'Fraunces',serif; font-size:22px; font-weight:600; color:#15332A; margin-top:4px; }
+    .rl-sub { font-size:12.5px; color:#5C6A5F; font-family:'IBM Plex Mono',monospace; margin-top:2px; }
+    .rl-total { font-size:13.5px; color:#1F4A3B; font-weight:600; margin-top:6px; }
+    .rl-badge { padding:4px 10px; font-size:11px; font-weight:700; border-radius:20px; border:1px solid; font-family:'IBM Plex Mono',monospace; }
+    .rl-badge.tetap, .rl-badge.aktif { background:#E5F1E8; color:#1F4A3B; border-color:#2E6B54; }
+    .rl-badge.kontrak { background:#FAF3E0; color:#9B7327; border-color:#C9A24B; }
+    .rl-badge.nonaktif { background:#F1F1F1; color:#5C6A5F; border-color:#D8CFB4; }
+    .rl-print-btn { background:#1F4A3B; color:#F6F1E3; border:none; padding:7px 14px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; }
+    .rl-month { padding:11px; border-radius:8px; border:1px solid #D8CFB4; display:flex; align-items:center; justify-content:space-between; }
+    .rl-month.lunas { background:#F1F7F2; border-color:#2E6B54; color:#15332A; }
+    .rl-month.belum { background:#F6F1E3; border-color:#E4DBC3; color:#9CA396; }
+    .rl-month .m-name { font-size:12px; font-weight:500; }
+
+    @media(max-width:720px){
+      .theme-ledger .tl-grid, .theme-ledger .tl-month-grid { grid-template-columns:1fr; }
+    }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 flex flex-col min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-slate-900 text-white shadow-md no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center space-x-3">
+          <div class="bg-emerald-600 p-2 rounded-lg text-white">
+            <i class="fa-solid fa-hands-holding-child text-xl"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-lg tracking-wide">SI-IURAN</span>
+              <span id="liveIndicator" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> LIVE
+              </span>
+            </div>
+            <span class="text-xs text-slate-400 block -mt-0.5">Rukun Kematian Perumahan Griya Buring Permai</span>
+          </div>
+        </div>
+        <div>
+          <a href="operator.html" class="bg-slate-800 hover:bg-emerald-700 text-emerald-400 hover:text-white px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition duration-300 border border-emerald-500/30 flex items-center space-x-2">
+            <i class="fa-solid fa-user-shield"></i>
+            <span>Area Operator</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Sub-Navigasi Tab Publik (Sticky & Mobile-Friendly) -->
+  <div class="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-xs no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-4 sm:space-x-8 overflow-x-auto">
+      <button onclick="switchPublicTab('beranda')" id="ptab-beranda" class="py-3.5 text-xs sm:text-sm font-bold border-b-2 border-emerald-600 text-emerald-600 flex items-center gap-2 shrink-0 cursor-pointer">
+        <i class="fa-solid fa-house-user"></i> <span>Kartu & Ringkasan Kas</span>
+      </button>
+      <button onclick="switchPublicTab('pengeluaran')" id="ptab-pengeluaran" class="py-3.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 shrink-0 cursor-pointer">
+        <i class="fa-solid fa-receipt text-rose-500"></i> <span>Rincian Pengeluaran</span>
+      </button>
+      <button onclick="switchPublicTab('monitoring')" id="ptab-monitoring" class="py-3.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 shrink-0 cursor-pointer">
+        <i class="fa-solid fa-list-check text-blue-500"></i> <span>Monitoring Iuran RT</span>
+      </button>
+      <button onclick="switchPublicTab('laporan')" id="ptab-laporan" class="py-3.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 shrink-0 cursor-pointer">
+        <i class="fa-solid fa-file-contract text-amber-600"></i> <span>Laporan Tahunan (LPJ)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Banner Ketentuan Pelayanan -->
+  <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4 no-print">
+    <div class="bg-emerald-50/80 border border-emerald-200 rounded-xl px-4 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div class="text-xs text-emerald-900 flex items-center gap-2">
+        <i class="fa-solid fa-circle-info text-emerald-600 text-sm"></i>
+        <span>Informasi hak pelayanan jenazah, fasilitas rumah duka, & santunan Rp750.000 bagi anggota aktif.</span>
+      </div>
+      <button onclick="toggleModal('modalInfo')" class="text-xs font-bold text-emerald-700 hover:text-emerald-900 underline shrink-0 cursor-pointer">
+        Lihat Ketentuan Pelayanan &rarr;
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Ketentuan Pelayanan -->
+  <div id="modalInfo" class="fixed inset-0 z-50 items-center justify-center p-4 bg-slate-900/50 hidden no-print">
+    <div class="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="text-base font-bold text-slate-900">Fasilitas & Ketentuan Pelayanan Rukun Kematian</h3>
+        <button onclick="toggleModal('modalInfo')" class="text-slate-400 hover:text-slate-600 cursor-pointer">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+      <div class="text-xs sm:text-sm text-slate-600 space-y-3 leading-relaxed">
+        <p>Setiap anggota yang memenuhi kewajiban iuran akan mendapatkan hak pelayanan dan fasilitas sebagai berikut:</p>
+        <ol class="list-decimal pl-4 space-y-2">
+          <li><strong>Pelayanan Jenazah:</strong> Pengurus akan membantu seluruh proses pengurusan jenazah, mulai dari memandikan, mengafani, hingga menyalatkan jenazah secara layak.</li>
+          <li><strong>Fasilitas Rumah Duka:</strong> Penyediaan peminjaman keranda jenazah, serta bantuan pemasangan tenda dan penataan kursi untuk para pelayat di rumah duka.</li>
+          <li><strong>Santunan & Perlengkapan Jenazah:</strong> Bantuan dana tunai sebesar Rp750.000 yang dialokasikan untuk membelanjakan keperluan pemakaman seperti kain kafan, kayu telisik/papan ari, batu nisan sementara, bunga, dan perlengkapan lainnya. Jika ada sisa uang dari pembelian tersebut, seluruhnya akan diserahkan langsung kepada pihak keluarga.</li>
+          <li><strong>Pelaksanaan Tahlilan:</strong> Pengurus siap membantu memfasilitasi dan memimpin pelaksanaan doa bersama/tahlilan di rumah duka, sesuai dengan permohonan dan kehendak dari pihak keluarga.</li>
+          <li><strong>Biaya Makam - Pengecualian:</strong> Lokasi lahan pemakaman resmi untuk warga GBP telah disediakan di TPU Wonokoyo. Namun, jika keluarga menghendaki pemakaman di tempat lain, dipersilakan. Seluruh biaya administrasi buka tanah makam dan upah jasa penggali liang lahat sepenuhnya ditanggung oleh pihak keluarga.</li>
+        </ol>
+      </div>
+      <button onclick="toggleModal('modalInfo')" class="w-full bg-slate-900 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer">
+        Tutup Informasi
+      </button>
+    </div>
+  </div>
+
+  <!-- KONTEN UTAMA -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+
+    <!-- ===================================================================== -->
+    <!-- TAB 1: BERANDA (CEK KARTU IURAN & DASHBOARD TRANSPARANSI KAS)         -->
+    <!-- ===================================================================== -->
+    <section id="pcontent-beranda" class="space-y-8">
+
+      <!-- PENCARIAN KARTU TEMA 1 -->
+      <div id="theme-default-cari" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 sm:p-8 no-print">
+        <div class="max-w-xl mx-auto text-center space-y-2 mb-5">
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Cek Kartu Iuran Digital</h2>
+          <p class="text-xs sm:text-sm text-slate-500">Masukkan Nomor Rumah dan pilih Tahun untuk melihat riwayat pembayaran iuran Anda secara transparan.</p>
+        </div>
+        <form onsubmit="event.preventDefault(); prosesCariIuran();" class="max-w-lg mx-auto flex flex-col sm:flex-row gap-2">
+          <div class="relative flex-grow">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-house-chimney"></i></div>
+            <input type="text" id="inputNoRumah" placeholder="No. Rumah (Contoh: B-18 atau D-29)" class="block w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all">
+          </div>
+          <select id="selectTahunKartu" onchange="prosesCariIuran()" class="px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="2026" selected>Tahun 2026</option>
+            <option value="2027">Tahun 2027</option>
+          </select>
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition shadow-sm flex items-center justify-center space-x-2 shrink-0 cursor-pointer">
+            <i class="fa-solid fa-magnifying-glass"></i><span>Cari</span>
+          </button>
+        </form>
+        <div id="alertCariGagal" class="hidden mt-4 max-w-lg mx-auto p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs sm:text-sm flex items-center space-x-2">
+          <i class="fa-solid fa-triangle-exclamation shrink-0"></i><span id="msgCariGagal">Data tidak ditemukan.</span>
+        </div>
+      </div>
+
+      <!-- PENCARIAN KARTU TEMA 2 (LEDGER) -->
+      <div id="theme-ledger-cari" class="hidden lookup-ledger no-print">
+        <div class="lookup-inner-ledger">
+          <h3>Cek Kartu Iuran Digital</h3>
+          <p>Masukkan Nomor Rumah dan pilih Tahun untuk melihat catatan kartu iuran kematian Anda.</p>
+          <form onsubmit="event.preventDefault(); prosesCariIuran();" class="flex flex-col sm:flex-row gap-2">
+            <input type="text" id="inputNoRumahLedger" placeholder="Contoh: B-18 atau D-29" class="flex-1 px-4 py-3 border border-[#D8CFB4] rounded-lg text-sm font-mono bg-[#F6F1E3] text-[#1E2A22]">
+            <select id="selectTahunKartuLedger" onchange="prosesCariIuran()" class="px-3 py-3 border border-[#D8CFB4] rounded-lg text-sm font-mono font-semibold bg-[#F6F1E3] text-[#1E2A22]">
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+            <button type="submit" class="bg-[#1F4A3B] text-[#F6F1E3] px-5 py-3 rounded-lg font-semibold text-sm cursor-pointer">Cari Kartu</button>
+          </form>
+          <div id="alertCariGagalLedger" class="hidden mt-4 p-3 bg-[#FBF1F0] border border-dashed border-[#A13D3D] text-[#A13D3D] rounded-lg text-xs font-medium">
+            <span id="msgCariGagalLedger">Data tidak ditemukan.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- AREA HASIL KARTU IURAN (PRINTABLE) -->
+      <div id="printArea" class="hidden">
+        <!-- Hasil Tema 1 -->
+        <div id="theme-default-result" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 sm:p-8">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-slate-100 gap-4">
+            <div>
+              <div class="text-xs font-bold text-emerald-600 uppercase tracking-widest">Kartu Iuran Digital RUKEM GBP</div>
+              <h3 id="cardNamaKk" class="text-xl font-bold text-slate-900 mt-1">-</h3>
+              <p id="cardDetailRumah" class="text-xs sm:text-sm text-slate-500">No. Rumah: - | RT/RW: -</p>
+              <div class="flex flex-wrap gap-3 mt-1.5">
+                <p id="cardTotalIuran" class="text-xs sm:text-sm font-semibold text-emerald-700">Total Iuran Keseluruhan: Rp 0</p>
+                <span id="cardBadgePendaftaran" class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-100 text-slate-600">Pendaftaran: -</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+              <span id="cardJenisWarga" class="px-3 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-200">Tetap</span>
+              <span id="cardStatusWarga" class="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Aktif</span>
+              <button onclick="window.print()" class="no-print border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center space-x-1.5 cursor-pointer">
+                <i class="fa-solid fa-print"></i><span>Cetak</span>
+              </button>
+            </div>
+          </div>
+          <div class="mt-5">
+            <div class="text-xs sm:text-sm font-semibold text-slate-700 mb-3 flex justify-between items-center">
+              <span id="labelTahunIuran">Status Iuran Tahun 2026</span>
+              <span class="text-xs font-normal text-slate-400 italic">*Hijau = Lunas, Abu-abu = Belum</span>
+            </div>
+            <div id="gridBulan" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5"></div>
+          </div>
+        </div>
+
+        <!-- Hasil Tema 2 -->
+        <div id="theme-ledger-result" class="hidden result-ledger">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-[#D8CFB4] gap-4">
+            <div>
+              <div class="rl-eyebrow">Kartu Iuran Digital RUKEM GBP</div>
+              <h3 id="t2_cardNamaKk" class="rl-name">-</h3>
+              <p id="t2_cardDetailRumah" class="rl-sub">No. Rumah: - | RT/RW: -</p>
+              <p id="t2_cardTotalIuran" class="rl-total">Total Iuran Keseluruhan: Rp 0</p>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+              <span id="t2_cardJenisWarga" class="rl-badge tetap">Tetap</span>
+              <span id="t2_cardStatusWarga" class="rl-badge aktif">Aktif</span>
+              <button onclick="window.print()" class="no-print rl-print-btn flex items-center gap-1.5">
+                <i class="fa-solid fa-print"></i><span>Cetak</span>
+              </button>
+            </div>
+          </div>
+          <div class="mt-5">
+            <div class="text-sm font-semibold mb-3 flex justify-between items-center text-[#1E2A22]">
+              <span id="t2_labelTahunIuran" style="font-family:'Fraunces',serif; font-size:16px;">Status Iuran Tahun 2026</span>
+              <span class="text-xs font-normal italic text-[#9B7327] font-mono">*Hijau = Lunas, Krem = Belum</span>
+            </div>
+            <div id="t2_gridBulan" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD TEMA 1 (DEFAULT) -->
+      <div id="theme-default-container" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 sm:p-8 no-print">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <i class="fa-solid fa-chart-pie text-emerald-600"></i> Transparansi Kas Kematian
+          </h2>
+          <span id="lastSyncText" class="text-[11px] text-slate-400 font-medium">Sinkronisasi real-time...</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 text-center">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Iuran Masuk</div>
+            <div id="dashMasuk" class="text-2xl font-extrabold text-emerald-600">Rp 0</div>
+          </div>
+          <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 text-center">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Pengeluaran</div>
+            <div id="dashKeluar" class="text-2xl font-extrabold text-rose-600">Rp 0</div>
+          </div>
+          <div class="bg-emerald-50 p-5 rounded-xl border border-emerald-200 text-center">
+            <div class="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">Sisa Saldo Kas Aktif</div>
+            <div id="dashSaldo" class="text-2xl font-extrabold text-emerald-700">Rp 0</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+          <div class="bg-blue-50 p-5 rounded-xl border border-blue-200 flex flex-col">
+            <div class="text-center mb-2">
+              <div id="lblMasukBulan" class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">Pemasukan Bulan Ini</div>
+              <div id="dashMasukBulanIni" class="text-2xl font-extrabold text-blue-700">Rp 0</div>
+            </div>
+            <div id="detailMasukList" class="text-xs text-slate-600 space-y-1 mt-2 border-t border-blue-200 pt-2 max-h-36 overflow-y-auto"></div>
+          </div>
+          <div class="bg-rose-50 p-5 rounded-xl border border-rose-200 flex flex-col">
+            <div class="text-center mb-2">
+              <div id="lblKeluarBulan" class="text-xs font-bold text-rose-600 uppercase tracking-wider mb-1">Pengeluaran Bulan Ini</div>
+              <div id="dashKeluarBulanIni" class="text-2xl font-extrabold text-rose-700">Rp 0</div>
+            </div>
+            <div id="detailKeluarList" class="text-xs text-slate-600 space-y-1 mt-2 border-t border-rose-200 pt-2 max-h-36 overflow-y-auto"></div>
+            <button onclick="switchPublicTab('pengeluaran')" class="mt-3 text-[11px] font-bold text-rose-700 hover:underline text-right cursor-pointer">
+              Lihat Semua Rincian Pengeluaran &rarr;
+            </button>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-200 pt-6">
+          <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-users text-blue-500"></i> Statistik Warga Aktif
+          </h3>
+          <div class="flex flex-col gap-3">
+            <div id="statsWargaContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+            <div class="flex justify-end">
+              <div id="statsTotalContainer" class="bg-blue-50 p-4 rounded-xl border border-blue-200 shadow-sm text-center w-full sm:w-1/3"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD TEMA 2 (LEDGER) -->
+      <div id="theme-ledger-container" class="hidden theme-ledger no-print">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <div class="tl-eyebrow">Neraca Kas</div>
+            <h2 class="tl-title">Transparansi Kas Rukun Kematian</h2>
+          </div>
+          <div class="text-xs text-slate-500 font-mono">↻ <span id="tlRefreshDate">Live Sync</span></div>
+        </div>
+
+        <div class="tl-grid">
+          <div class="tl-card">
+            <div class="tl-label">Total Iuran Masuk</div>
+            <div id="t2_dashMasuk" class="tl-amount" style="color:var(--credit)">Rp 0</div>
+          </div>
+          <div class="tl-card">
+            <div class="tl-label">Total Pengeluaran</div>
+            <div id="t2_dashKeluar" class="tl-amount" style="color:var(--debit)">Rp 0</div>
+          </div>
+          <div class="tl-card tl-saldo">
+            <div class="tl-stamp">TERVERIFIKASI<br>PENGURUS Rukem GBP</div>
+            <div class="tl-label">Sisa Saldo Kas Aktif</div>
+            <div id="t2_dashSaldo" class="tl-amount">Rp 0</div>
+          </div>
+        </div>
+
+        <div class="tl-month-grid">
+          <div class="tl-month-card in">
+            <div class="text-center">
+              <div id="t2_lblMasukBulan" class="tl-label">Pemasukan Bulan Ini</div>
+              <div id="t2_dashMasukBulanIni" class="tl-amount" style="color:var(--credit)">Rp 0</div>
+            </div>
+            <div id="t2_detailMasukList" class="tl-detail-list" style="border-color:#BEDACC;"></div>
+          </div>
+          <div class="tl-month-card out">
+            <div class="text-center">
+              <div id="t2_lblKeluarBulan" class="tl-label">Pengeluaran Bulan Ini</div>
+              <div id="t2_dashKeluarBulanIni" class="tl-amount" style="color:var(--debit)">Rp 0</div>
+            </div>
+            <div id="t2_detailKeluarList" class="tl-detail-list" style="border-color:#E6C6C6;"></div>
+          </div>
+        </div>
+
+        <div class="mt-8">
+          <div class="tl-eyebrow">Data Warga</div>
+          <h2 class="tl-title">Statistik Warga Aktif</h2>
+          <div class="flex flex-col gap-3 mt-3">
+            <div id="t2_statsWargaContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+            <div class="flex justify-end">
+              <div id="t2_statsTotalContainer" class="tl-stat-card w-full sm:w-1/3" style="background:var(--pine-deep);border-color:var(--pine-deep);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOMBOL SWITCH THEME -->
+      <div class="flex justify-center no-print">
+        <div class="flex bg-slate-200 rounded-xl p-1 border border-slate-300">
+          <button id="btnThemeDefault" onclick="switchTheme('default')" class="text-xs font-bold px-4 py-2 rounded-lg bg-white text-emerald-700 shadow-sm cursor-pointer transition-all">
+            <i class="fa-solid fa-chart-pie mr-1"></i> Tema Modern
+          </button>
+          <button id="btnThemeLedger" onclick="switchTheme('ledger')" class="text-xs font-bold px-4 py-2 rounded-lg text-slate-600 cursor-pointer transition-all">
+            <i class="fa-solid fa-book mr-1"></i> Tema Buku Kas
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 2: RINCIAN PENGELUARAN KAS (TRANSPARANSI PENGGUNAAN DANA)         -->
+    <!-- ===================================================================== -->
+    <section id="pcontent-pengeluaran" class="hidden space-y-6 no-print">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h2 class="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-receipt text-rose-600"></i> Rincian Penggunaan Dana (Kas Keluar)
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">Transparansi seluruh pengeluaran panitia Rukun Kematian GBP untuk klaim santunan, perlengkapan makam, maupun operasional.</p>
+          </div>
+          <div class="bg-rose-50 border border-rose-200 px-4 py-2.5 rounded-xl text-right">
+            <div class="text-[11px] font-bold text-rose-600 uppercase">Total Pengeluaran Terfilter</div>
+            <div id="totalKeluarFiltered" class="text-lg font-extrabold text-rose-700">Rp 0</div>
+          </div>
+        </div>
+
+        <!-- Filter Pengeluaran -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Filter Tahun</label>
+            <select id="filterKeluarTahun" onchange="renderPublicKasKeluar()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm">
+              <option value="Semua">Semua Tahun</option>
+              <option value="2026" selected>Tahun 2026</option>
+              <option value="2027">Tahun 2027</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Filter Bulan</label>
+            <select id="filterKeluarBulan" onchange="renderPublicKasKeluar()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm">
+              <option value="Semua">Semua Bulan</option>
+              <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+              <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+              <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+              <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Kategori Pengeluaran</label>
+            <select id="filterKeluarKategori" onchange="renderPublicKasKeluar()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm">
+              <option value="Semua">Semua Kategori</option>
+              <option value="Klaim Santunan Kematian">Klaim Santunan Kematian</option>
+              <option value="Biaya Operasional Pokja">Biaya Operasional Pokja</option>
+              <option value="Perlengkapan / Alat Makam">Perlengkapan / Alat Makam</option>
+              <option value="Lain-lain / Sosial">Lain-lain / Sosial</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Ringkasan Per Kategori -->
+        <div id="kategoriSummaryGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+
+        <!-- Tabel Detail Pengeluaran -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-xs sm:text-sm text-left">
+            <thead class="bg-slate-50 text-slate-500 text-xs font-bold uppercase">
+              <tr>
+                <th class="px-4 py-3 rounded-l-lg">Tanggal</th>
+                <th class="px-4 py-3">Kategori</th>
+                <th class="px-4 py-3">Keterangan / Peruntukan</th>
+                <th class="px-4 py-3 rounded-r-lg text-right">Nominal</th>
+              </tr>
+            </thead>
+            <tbody id="publicKasKeluarBody" class="divide-y divide-slate-100 text-slate-700"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 3: MONITORING REAL-TIME IURAN PER RT                              -->
+    <!-- ===================================================================== -->
+    <section id="pcontent-monitoring" class="hidden space-y-6 no-print">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg sm:text-xl font-bold text-slate-900">Monitoring Status Iuran Per RT</h2>
+              <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700">REAL-TIME</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">Status pembayaran otomatis diperbarui seketika saat pengurus mencatat transaksi iuran.</p>
+          </div>
+          <div class="flex gap-2">
+            <div class="bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl text-center">
+              <div class="text-[10px] font-bold text-emerald-700 uppercase">Lunas</div>
+              <div id="monCountLunas" class="text-base font-extrabold text-emerald-700">0</div>
+            </div>
+            <div class="bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl text-center">
+              <div class="text-[10px] font-bold text-amber-700 uppercase">Belum Bayar</div>
+              <div id="monCountBelum" class="text-base font-extrabold text-amber-700">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Monitoring -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Bulan</label>
+            <select id="monBulan" onchange="renderPublicMonitoring()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm">
+              <option value="Januari">Januari</option><option value="Februari">Februari</option><option value="Maret">Maret</option>
+              <option value="April">April</option><option value="Mei">Mei</option><option value="Juni">Juni</option>
+              <option value="Juli">Juli</option><option value="Agustus">Agustus</option><option value="September">September</option>
+              <option value="Oktober">Oktober</option><option value="November">November</option><option value="Desember">Desember</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Tahun</label>
+            <select id="monTahun" onchange="renderPublicMonitoring()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm">
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">RT / RW</label>
+            <select id="monRtRw" onchange="renderPublicMonitoring()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm">
+              <option value="Semua">Semua RT / RW</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Status Bayar</label>
+            <select id="monStatus" onchange="renderPublicMonitoring()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm">
+              <option value="Semua">Semua Status</option>
+              <option value="Belum Bayar" selected>Belum Bayar</option>
+              <option value="Lunas">Sudah Lunas</option>
+            </select>
+          </div>
+          <div class="col-span-2 sm:col-span-1">
+            <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Cari Warga</label>
+            <input type="text" id="monSearch" onkeyup="renderPublicMonitoring()" placeholder="No Rumah / Nama..." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm">
+          </div>
+        </div>
+
+        <!-- Tabel Monitoring -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-xs sm:text-sm text-left">
+            <thead class="bg-slate-50 text-slate-500 text-xs font-bold uppercase">
+              <tr>
+                <th class="px-4 py-3 rounded-l-lg">No Rumah</th>
+                <th class="px-4 py-3">Nama KK</th>
+                <th class="px-4 py-3">RT / RW</th>
+                <th class="px-4 py-3">Jenis</th>
+                <th class="px-4 py-3 rounded-r-lg text-center">Status Iuran</th>
+              </tr>
+            </thead>
+            <tbody id="publicMonitoringBody" class="divide-y divide-slate-100 text-slate-700"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 4: LAPORAN TAHUNAN / LPJ PUBLIK (TANPA LOGIN)                     -->
+    <!-- ===================================================================== -->
+    <section id="pcontent-laporan" class="hidden space-y-6 no-print">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h2 class="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-file-contract text-amber-600"></i> Laporan Pertanggungjawaban (LPJ) Tahunan
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">Rekapitulasi keuangan tahunan transparan yang dapat diakses dan diunduh langsung oleh seluruh warga.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="lpjTahun" onchange="renderLaporanTahunan()" class="px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-slate-800">
+              <option value="2026" selected>Tahun Buku 2026</option>
+              <option value="2027">Tahun Buku 2027</option>
+            </select>
+            <button onclick="downloadLpjExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-file-excel"></i> <span>Excel</span>
+            </button>
+            <button onclick="downloadLpjPdf()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-file-pdf"></i> <span>PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Ringkasan Posisi Kas Tahunan -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div class="text-[11px] font-bold text-slate-500 uppercase">Saldo Awal Tahun</div>
+            <div id="lpjSaldoAwal" class="text-lg font-extrabold text-slate-800 mt-1">Rp 0</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Bawaan tahun sebelumnya</div>
+          </div>
+          <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+            <div class="text-[11px] font-bold text-emerald-700 uppercase">Total Pemasukan</div>
+            <div id="lpjTotalMasuk" class="text-lg font-extrabold text-emerald-700 mt-1">Rp 0</div>
+            <div id="lpjDetailSubMasuk" class="text-[10px] text-emerald-600 mt-0.5">Bulanan + Pendaftaran</div>
+          </div>
+          <div class="bg-rose-50 p-4 rounded-xl border border-rose-200">
+            <div class="text-[11px] font-bold text-rose-700 uppercase">Total Pengeluaran</div>
+            <div id="lpjTotalKeluar" class="text-lg font-extrabold text-rose-700 mt-1">Rp 0</div>
+            <div class="text-[10px] text-rose-600 mt-0.5">Santunan & Operasional</div>
+          </div>
+          <div class="bg-slate-900 text-white p-4 rounded-xl shadow-sm">
+            <div class="text-[11px] font-bold text-amber-400 uppercase">Saldo Akhir Tahun</div>
+            <div id="lpjSaldoAkhir" class="text-lg font-extrabold text-white mt-1">Rp 0</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Menjadi saldo awal tahun berikutnya</div>
+          </div>
+        </div>
+
+        <!-- Rincian Rekap Bulanan Jan - Des -->
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">Rekapitulasi Mutasi Kas Per Bulan</h3>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-xs sm:text-sm text-left">
+              <thead class="bg-slate-50 text-slate-500 text-xs font-bold uppercase">
+                <tr>
+                  <th class="px-4 py-3 rounded-l-lg">Bulan</th>
+                  <th class="px-4 py-3 text-right">Iuran Pendaftaran</th>
+                  <th class="px-4 py-3 text-right">Iuran Bulanan</th>
+                  <th class="px-4 py-3 text-right">Pengeluaran Kas</th>
+                  <th class="px-4 py-3 rounded-r-lg text-right">Surplus / Defisit</th>
+                </tr>
+              </thead>
+              <tbody id="lpjBulananBody" class="divide-y divide-slate-100 text-slate-700"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Rincian Pengeluaran LPJ -->
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">Daftar Realisasi Pengeluaran Tahun Ini</h3>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-xs sm:text-sm text-left">
+              <thead class="bg-slate-50 text-slate-500 text-xs font-bold uppercase">
+                <tr>
+                  <th class="px-4 py-3 rounded-l-lg">Tanggal</th>
+                  <th class="px-4 py-3">Kategori</th>
+                  <th class="px-4 py-3">Keterangan</th>
+                  <th class="px-4 py-3 rounded-r-lg text-right">Nominal</th>
+                </tr>
+              </thead>
+              <tbody id="lpjKeluarBody" class="divide-y divide-slate-100 text-slate-700"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-slate-900 text-slate-400 text-center py-4 text-xs border-t border-slate-800 no-print mt-auto">
+    <p>&copy; 2026 Sistem Informasi Rukun Kematian Perumahan Griya Buring Permai. Transparansi Kas Warga.</p>
+  </footer>
+
+  <!-- Firebase Modular SDK & Logika Portal Warga -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB5lth5fRPlsyR5hUjKVA1OwU29Avl6zEk",
+      authDomain: "rukem-gbp.firebaseapp.com",
+      projectId: "rukem-gbp",
+      storageBucket: "rukem-gbp.firebasestorage.app",
+      messagingSenderId: "214628126719",
+      appId: "1:214628126719:web:b6587f10a76603a37621ca"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // State Global Real-Time
+    let stateWarga = [];
+    let stateTrx = [];
+    let stateKeluar = [];
+    let currentLpjExport = null;
+
+    const BULAN_LIST = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+    // Set default filter bulan monitoring ke bulan saat ini
+    const now = new Date();
+    document.getElementById('monBulan').value = BULAN_LIST[now.getMonth()];
+
+    // Helper Tanggal Aman
+    function toJsDate(item) {
+      if (item.timestamp && typeof item.timestamp.toDate === 'function') return item.timestamp.toDate();
+      if (item.tanggalIso) return new Date(item.tanggalIso);
+      return new Date();
+    }
+
+    function formatRupiah(num) {
+      return 'Rp ' + (Number(num) || 0).toLocaleString('id-ID');
+    }
+
+    // Listener Real-Time Firestore
+    onSnapshot(collection(db, 'Master_Warga'), (snap) => {
+      stateWarga = snap.docs.map(d => d.data()).sort((a, b) => a.noRumah.localeCompare(b.noRumah, undefined, { numeric: true }));
+      populateRtDropdown();
+      refreshAllViews();
+    });
+
+    onSnapshot(collection(db, 'Transaksi_Iuran'), (snap) => {
+      stateTrx = snap.docs.map(d => d.data());
+      refreshAllViews();
+    });
+
+    onSnapshot(collection(db, 'Kas_Keluar'), (snap) => {
+      stateKeluar = snap.docs.map(d => {
+        const data = d.data();
+        return { ...data, jsDate: toJsDate(data) };
+      }).sort((a, b) => b.jsDate - a.jsDate);
+      refreshAllViews();
+    });
+
+    function populateRtDropdown() {
+      const rtSet = new Set();
+      stateWarga.forEach(w => {
+        if (w.status && w.status.toLowerCase() === 'aktif' && w.rtRw) rtSet.add(w.rtRw.trim());
+      });
+      const sel = document.getElementById('monRtRw');
+      const currentVal = sel.value;
+      const sortedRt = Array.from(rtSet).sort();
+      sel.innerHTML = '<option value="Semua">Semua RT / RW</option>' + sortedRt.map(r => `<option value="${r}">RT ${r}</option>`).join('');
+      if (sortedRt.includes(currentVal)) sel.value = currentVal;
+    }
+
+    function refreshAllViews() {
+      const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.getElementById('lastSyncText').textContent = `Diperbarui otomatis pukul ${timeStr}`;
+      document.getElementById('tlRefreshDate').textContent = `Live • ${timeStr}`;
+
+      renderDashboard();
+      renderPublicKasKeluar();
+      renderPublicMonitoring();
+      renderLaporanTahunan();
+
+      // Jika kartu iuran sedang terbuka, perbarui otomatis juga
+      if (!document.getElementById('printArea').classList.contains('hidden')) {
+        window.prosesCariIuran(true);
+      }
+    }
+
+    // =========================================================================
+    // 1. RENDER DASHBOARD UTAMA
+    // =========================================================================
+    function renderDashboard() {
+      const curDate = new Date();
+      const curMonthName = BULAN_LIST[curDate.getMonth()];
+      const curYear = curDate.getFullYear();
+      const curYm = `${curYear}-${String(curDate.getMonth() + 1).padStart(2, '0')}`;
+
+      const lblMasuk = `Pemasukan Bulan ${curMonthName} ${curYear}`;
+      const lblKeluar = `Pengeluaran Bulan ${curMonthName} ${curYear}`;
+      ['lblMasukBulan', 't2_lblMasukBulan'].forEach(id => document.getElementById(id).textContent = lblMasuk);
+      ['lblKeluarBulan', 't2_lblKeluarBulan'].forEach(id => document.getElementById(id).textContent = lblKeluar);
+
+      // Map No Rumah -> RT/RW & Hitung Statistik Warga Aktif
+      const wargaRtMap = {};
+      const rtCount = {};
+      let totalWargaAktif = 0;
+
+      stateWarga.forEach(w => {
+        const clean = (w.noRumahClean || w.noRumah.replace(/\s+/g, '').toLowerCase()).trim();
+        wargaRtMap[clean] = w.rtRw || 'Lainnya';
+        if (w.status && w.status.toLowerCase() === 'aktif' && w.rtRw) {
+          rtCount[w.rtRw] = (rtCount[w.rtRw] || 0) + 1;
+          totalWargaAktif++;
+        }
+      });
+
+      // Hitung Pemasukan
+      let totalMasukHistoris = 0;
+      let totalMasukBulanIni = 0;
+      const incomeByRt = {};
+
+      stateTrx.forEach(t => {
+        if ((t.statusTrx || 'Aktif') !== 'Aktif') return;
+        const nom = Number(t.nominal) || 0;
+        totalMasukHistoris += nom;
+
+        const dt = toJsDate(t);
+        const ym = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+        if (ym === curYm) {
+          totalMasukBulanIni += nom;
+          const clean = (t.noRumahClean || t.noRumah.replace(/\s+/g, '').toLowerCase()).trim();
+          const rt = wargaRtMap[clean] || 'Lainnya';
+          incomeByRt[rt] = (incomeByRt[rt] || 0) + nom;
+        }
+      });
+
+      // Hitung Pengeluaran
+      let totalKeluarHistoris = 0;
+      let totalKeluarBulanIni = 0;
+      const detailKeluarBulanIni = [];
+
+      stateKeluar.forEach(k => {
+        const nom = Number(k.nominal) || 0;
+        totalKeluarHistoris += nom;
+        const ym = `${k.jsDate.getFullYear()}-${String(k.jsDate.getMonth() + 1).padStart(2, '0')}`;
+        if (ym === curYm) {
+          totalKeluarBulanIni += nom;
+          detailKeluarBulanIni.push({ keterangan: k.keterangan, nominal: nom });
+        }
+      });
+
+      const sisaSaldo = totalMasukHistoris - totalKeluarHistoris;
+
+      // Update Angka Tema 1 & Tema 2
+      document.getElementById('dashMasuk').textContent = formatRupiah(totalMasukHistoris);
+      document.getElementById('dashKeluar').textContent = formatRupiah(totalKeluarHistoris);
+      document.getElementById('dashSaldo').textContent = formatRupiah(sisaSaldo);
+      document.getElementById('dashMasukBulanIni').textContent = formatRupiah(totalMasukBulanIni);
+      document.getElementById('dashKeluarBulanIni').textContent = formatRupiah(totalKeluarBulanIni);
+
+      document.getElementById('t2_dashMasuk').textContent = formatRupiah(totalMasukHistoris);
+      document.getElementById('t2_dashKeluar').textContent = formatRupiah(totalKeluarHistoris);
+      document.getElementById('t2_dashSaldo').textContent = formatRupiah(sisaSaldo);
+      document.getElementById('t2_dashMasukBulanIni').textContent = formatRupiah(totalMasukBulanIni);
+      document.getElementById('t2_dashKeluarBulanIni').textContent = formatRupiah(totalKeluarBulanIni);
+
+      // Rincian Masuk Bulan Ini
+      const rtEntries = Object.entries(incomeByRt).sort((a, b) => a[0].localeCompare(b[0]));
+      document.getElementById('detailMasukList').innerHTML = rtEntries.length
+        ? rtEntries.map(([rt, tot]) => `<div class="flex justify-between"><span class="font-medium text-slate-700">RT ${rt}</span><span class="font-bold text-blue-600">${formatRupiah(tot)}</span></div>`).join('')
+        : `<div class="text-center italic text-slate-400 py-2">Belum ada pemasukan bulan ini.</div>`;
+
+      document.getElementById('t2_detailMasukList').innerHTML = rtEntries.length
+        ? rtEntries.map(([rt, tot]) => `<div class="tl-detail-item"><span>RT ${rt}</span><span style="color:var(--credit);font-weight:600;">${formatRupiah(tot)}</span></div>`).join('')
+        : `<div class="tl-detail-item italic justify-center">Belum ada pemasukan</div>`;
+
+      // Rincian Keluar Bulan Ini
+      document.getElementById('detailKeluarList').innerHTML = detailKeluarBulanIni.length
+        ? detailKeluarBulanIni.map(item => `<div class="flex justify-between gap-2"><span class="text-slate-600 truncate">${item.keterangan}</span><span class="font-bold text-rose-600 whitespace-nowrap">${formatRupiah(item.nominal)}</span></div>`).join('')
+        : `<div class="text-center italic text-slate-400 py-2">Belum ada pengeluaran bulan ini.</div>`;
+
+      document.getElementById('t2_detailKeluarList').innerHTML = detailKeluarBulanIni.length
+        ? detailKeluarBulanIni.map(item => `<div class="tl-detail-item"><span class="truncate max-w-[70%]">${item.keterangan}</span><span style="color:var(--debit);font-weight:600;">${formatRupiah(item.nominal)}</span></div>`).join('')
+        : `<div class="tl-detail-item italic justify-center">Belum ada pengeluaran</div>`;
+
+      // Statistik Warga
+      const sortedStats = Object.entries(rtCount).sort((a, b) => a[0].localeCompare(b[0]));
+      document.getElementById('statsWargaContainer').innerHTML = sortedStats.map(([rt, jml]) => `
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+          <div class="text-xs font-bold text-slate-500 uppercase">RT ${rt}</div>
+          <div class="text-2xl font-extrabold text-slate-800 mt-1">${jml}</div>
+          <div class="text-[11px] text-slate-400">Warga Aktif</div>
+        </div>
+      `).join('');
+
+      document.getElementById('statsTotalContainer').innerHTML = `
+        <div class="text-xs font-bold text-blue-600 uppercase">Total Semua RT</div>
+        <div class="text-2xl font-extrabold text-blue-700 mt-1">${totalWargaAktif}</div>
+        <div class="text-[11px] text-blue-500">Warga Aktif</div>
+      `;
+
+      document.getElementById('t2_statsWargaContainer').innerHTML = sortedStats.map(([rt, jml]) => `
+        <div class="tl-stat-card">
+          <div class="tl-label">RT ${rt}</div>
+          <div class="tl-stat-num">${jml}</div>
+          <div class="text-xs text-[#5C6A5F]">warga terdaftar</div>
+        </div>
+      `).join('');
+
+      document.getElementById('t2_statsTotalContainer').innerHTML = `
+        <div class="tl-label" style="color:#B9C9BE;">Total Semua RT</div>
+        <div class="tl-stat-num" style="color:#F6F1E3;">${totalWargaAktif}</div>
+        <div class="text-xs text-[#B9C9BE]">warga aktif keseluruhan</div>
+      `;
+    }
+
+    // =========================================================================
+    // 2. CARI KARTU IURAN DIGITAL (MENDUKUNG MULTI-TAHUN 2026 & 2027)
+    // =========================================================================
+    window.prosesCariIuran = function(silent = false) {
+      const isLedger = (localStorage.getItem('si-ik-theme') || 'default') === 'ledger';
+      const rawInput = isLedger ? document.getElementById('inputNoRumahLedger').value : document.getElementById('inputNoRumah').value;
+      const tahunDipilih = isLedger ? document.getElementById('selectTahunKartuLedger').value : document.getElementById('selectTahunKartu').value;
+
+      // Sinkronkan input antar tema
+      document.getElementById('inputNoRumah').value = rawInput;
+      document.getElementById('inputNoRumahLedger').value = rawInput;
+      document.getElementById('selectTahunKartu').value = tahunDipilih;
+      document.getElementById('selectTahunKartuLedger').value = tahunDipilih;
+
+      const cleanSearch = rawInput.replace(/\s+/g, '').toLowerCase().trim();
+      if (!cleanSearch) return;
+
+      document.getElementById('alertCariGagal').classList.add('hidden');
+      document.getElementById('alertCariGagalLedger').classList.add('hidden');
+
+      const warga = stateWarga.find(w => (w.noRumahClean || w.noRumah.replace(/\s+/g, '').toLowerCase()).trim() === cleanSearch);
+
+      if (!warga) {
+        if (!silent) {
+          document.getElementById('printArea').classList.add('hidden');
+          const msg = `Data warga dengan Nomor Rumah "${rawInput}" tidak ditemukan.`;
+          document.getElementById('msgCariGagal').textContent = msg;
+          document.getElementById('alertCariGagal').classList.remove('hidden');
+          document.getElementById('msgCariGagalLedger').textContent = msg;
+          document.getElementById('alertCariGagalLedger').classList.remove('hidden');
+        }
+        return;
+      }
+
+      const riwayatWarga = stateTrx.filter(t =>
+        (t.statusTrx || 'Aktif') === 'Aktif' &&
+        (t.noRumahClean || t.noRumah.replace(/\s+/g, '').toLowerCase()).trim() === cleanSearch
+      );
+
+      const totalBayarSemua = riwayatWarga.reduce((sum, t) => sum + (Number(t.nominal) || 0), 0);
+      const sudahDaftar = riwayatWarga.some(t => (t.tipeIuran || '').toLowerCase() === 'pendaftaran');
+
+      document.getElementById('printArea').classList.remove('hidden');
+      window.switchTheme(localStorage.getItem('si-ik-theme') || 'default');
+
+      // Update Tema 1
+      document.getElementById('cardNamaKk').textContent = warga.namaKk;
+      document.getElementById('cardDetailRumah').textContent = `No. Rumah: ${warga.noRumah} | RT/RW: ${warga.rtRw}`;
+      document.getElementById('cardTotalIuran').textContent = `Total Iuran Keseluruhan: ${formatRupiah(totalBayarSemua)}`;
+      document.getElementById('cardStatusWarga').textContent = warga.status;
+      document.getElementById('cardJenisWarga').textContent = warga.jenisWarga || 'Tetap';
+
+      const badgeDaftar = document.getElementById('cardBadgePendaftaran');
+      if (warga.jenisWarga === 'Kontrak') {
+        badgeDaftar.textContent = 'Warga Kontrak (Bebas Pendaftaran)';
+        badgeDaftar.className = 'px-2 py-0.5 text-[11px] font-bold rounded bg-amber-50 text-amber-700 border border-amber-200';
+      } else if (sudahDaftar) {
+        badgeDaftar.textContent = 'Pendaftaran Rp30.000: Lunas';
+        badgeDaftar.className = 'px-2 py-0.5 text-[11px] font-bold rounded bg-emerald-50 text-emerald-700 border border-emerald-200';
+      } else {
+        badgeDaftar.textContent = 'Pendaftaran Rp30.000: Belum';
+        badgeDaftar.className = 'px-2 py-0.5 text-[11px] font-bold rounded bg-rose-50 text-rose-700 border border-rose-200';
+      }
+
+      // Update Tema 2
+      document.getElementById('t2_cardNamaKk').textContent = warga.namaKk;
+      document.getElementById('t2_cardDetailRumah').textContent = `No. Rumah: ${warga.noRumah} | RT/RW: ${warga.rtRw}`;
+      document.getElementById('t2_cardTotalIuran').textContent = `Total Iuran Keseluruhan: ${formatRupiah(totalBayarSemua)}`;
+      document.getElementById('t2_cardStatusWarga').textContent = warga.status;
+      document.getElementById('t2_cardJenisWarga').textContent = warga.jenisWarga || 'Tetap';
+
+      document.getElementById('labelTahunIuran').textContent = `Status Iuran Bulanan Tahun ${tahunDipilih}`;
+      document.getElementById('t2_labelTahunIuran').textContent = `Status Iuran Bulanan Tahun ${tahunDipilih}`;
+
+      let grid1 = '';
+      let grid2 = '';
+      BULAN_LIST.forEach(bln => {
+        const lunas = riwayatWarga.some(r =>
+          r.bulan.toLowerCase() === bln.toLowerCase() &&
+          String(r.tahun) === String(tahunDipilih) &&
+          (r.tipeIuran || '').toLowerCase() === 'bulanan'
+        );
+
+        grid1 += lunas
+          ? `<div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-emerald-800"><span class="text-xs font-semibold">${bln}</span><i class="fa-solid fa-circle-check text-emerald-600"></i></div>`
+          : `<div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-slate-400"><span class="text-xs font-medium">${bln}</span><i class="fa-solid fa-circle-minus text-slate-300"></i></div>`;
+
+        grid2 += lunas
+          ? `<div class="rl-month lunas"><span class="m-name">${bln}</span><i class="fa-solid fa-check text-[#1F4A3B]"></i></div>`
+          : `<div class="rl-month belum"><span class="m-name">${bln}</span><i class="fa-solid fa-minus text-[#9CA396]"></i></div>`;
+      });
+
+      document.getElementById('gridBulan').innerHTML = grid1;
+      document.getElementById('t2_gridBulan').innerHTML = grid2;
+    };
+
+    // =========================================================================
+    // 3. RENDER RINCIAN PENGELUARAN KAS (FITUR BARU 1)
+    // =========================================================================
+    window.renderPublicKasKeluar = function() {
+      const fTahun = document.getElementById('filterKeluarTahun').value;
+      const fBulan = document.getElementById('filterKeluarBulan').value;
+      const fKat = document.getElementById('filterKeluarKategori').value;
+
+      const filtered = stateKeluar.filter(k => {
+        const thnMatch = fTahun === 'Semua' || String(k.jsDate.getFullYear()) === fTahun;
+        const blnMatch = fBulan === 'Semua' || String(k.jsDate.getMonth() + 1) === fBulan;
+        const katMatch = fKat === 'Semua' || k.kategori === fKat;
+        return thnMatch && blnMatch && katMatch;
+      });
+
+      const totalFiltered = filtered.reduce((sum, k) => sum + (Number(k.nominal) || 0), 0);
+      document.getElementById('totalKeluarFiltered').textContent = formatRupiah(totalFiltered);
+
+      // Ringkasan per kategori (dari data tahun terfilter)
+      const byKat = {};
+      stateKeluar.filter(k => fTahun === 'Semua' || String(k.jsDate.getFullYear()) === fTahun).forEach(k => {
+        byKat[k.kategori] = (byKat[k.kategori] || 0) + (Number(k.nominal) || 0);
+      });
+
+      document.getElementById('kategoriSummaryGrid').innerHTML = Object.entries(byKat).map(([kat, tot]) => `
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+          <div class="text-[11px] font-bold text-slate-500 truncate">${kat}</div>
+          <div class="text-sm sm:text-base font-extrabold text-slate-800 mt-1">${formatRupiah(tot)}</div>
+        </div>
+      `).join('');
+
+      const tbody = document.getElementById('publicKasKeluarBody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-xs text-slate-400 italic">Tidak ada catatan pengeluaran pada filter yang dipilih.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(k => {
+        const tglStr = k.jsDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-3 whitespace-nowrap font-medium text-slate-500">${tglStr}</td>
+            <td class="px-4 py-3"><span class="px-2 py-0.5 text-[11px] font-bold rounded-md bg-rose-50 text-rose-700 border border-rose-100">${k.kategori}</span></td>
+            <td class="px-4 py-3 text-slate-700">${k.keterangan}</td>
+            <td class="px-4 py-3 text-right font-bold text-rose-600 whitespace-nowrap">${formatRupiah(k.nominal)}</td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    // =========================================================================
+    // 4. RENDER MONITORING IURAN PER RT REAL-TIME (FITUR BARU 2)
+    // =========================================================================
+    window.renderPublicMonitoring = function() {
+      const mBulan = document.getElementById('monBulan').value;
+      const mTahun = document.getElementById('monTahun').value;
+      const mRt = document.getElementById('monRtRw').value;
+      const mStatus = document.getElementById('monStatus').value;
+      const mSearch = document.getElementById('monSearch').value.toLowerCase().trim();
+
+      // Kumpulkan Set No Rumah yang sudah Lunas pada Bulan & Tahun terpilih
+      const lunasSet = new Set();
+      stateTrx.forEach(t => {
+        if ((t.statusTrx || 'Aktif') === 'Aktif' &&
+            (t.tipeIuran || '').toLowerCase() === 'bulanan' &&
+            t.bulan.toLowerCase() === mBulan.toLowerCase() &&
+            String(t.tahun) === String(mTahun)) {
+          const clean = (t.noRumahClean || t.noRumah.replace(/\s+/g, '').toLowerCase()).trim();
+          lunasSet.add(clean);
+        }
+      });
+
+      let countLunas = 0;
+      let countBelum = 0;
+      const rows = [];
+
+      stateWarga.forEach(w => {
+        if ((w.status || '').toLowerCase() !== 'aktif') return;
+        if (mRt !== 'Semua' && (w.rtRw || '').trim() !== mRt) return;
+
+        const clean = (w.noRumahClean || w.noRumah.replace(/\s+/g, '').toLowerCase()).trim();
+        const isLunas = lunasSet.has(clean);
+        if (isLunas) countLunas++; else countBelum++;
+
+        if (mStatus === 'Lunas' && !isLunas) return;
+        if (mStatus === 'Belum Bayar' && isLunas) return;
+
+        if (mSearch && !w.noRumah.toLowerCase().includes(mSearch) && !w.namaKk.toLowerCase().includes(mSearch)) return;
+
+        rows.push({ ...w, isLunas });
+      });
+
+      document.getElementById('monCountLunas').textContent = countLunas;
+      document.getElementById('monCountBelum').textContent = countBelum;
+
+      const tbody = document.getElementById('publicMonitoringBody');
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-6 text-center text-xs text-slate-400 italic">Tidak ada data warga sesuai filter.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(r => `
+        <tr class="hover:bg-slate-50">
+          <td class="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">${r.noRumah}</td>
+          <td class="px-4 py-3 text-slate-700">${r.namaKk}</td>
+          <td class="px-4 py-3 text-slate-500 whitespace-nowrap">${r.rtRw || '-'}</td>
+          <td class="px-4 py-3 text-xs text-slate-500">${r.jenisWarga || 'Tetap'}</td>
+          <td class="px-4 py-3 text-center whitespace-nowrap">
+            ${r.isLunas
+              ? '<span class="px-2.5 py-1 text-[11px] font-extrabold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200"><i class="fa-solid fa-check mr-1"></i>LUNAS</span>'
+              : '<span class="px-2.5 py-1 text-[11px] font-extrabold rounded-full bg-amber-50 text-amber-700 border border-amber-200">BELUM BAYAR</span>'}
+          </td>
+        </tr>
+      `).join('');
+    };
+
+    // =========================================================================
+    // 5. RENDER LAPORAN TAHUNAN / LPJ PUBLIK (FITUR BARU 3)
+    // =========================================================================
+    window.renderLaporanTahunan = function() {
+      const targetYear = Number(document.getElementById('lpjTahun').value);
+
+      // 1. Hitung Saldo Awal Tahun (Seluruh transaksi sebelum 1 Jan targetYear)
+      let saldoAwal = 0;
+      stateTrx.forEach(t => {
+        if ((t.statusTrx || 'Aktif') !== 'Aktif') return;
+        const dt = toJsDate(t);
+        if (dt.getFullYear() < targetYear) saldoAwal += (Number(t.nominal) || 0);
+      });
+      stateKeluar.forEach(k => {
+        if (k.jsDate.getFullYear() < targetYear) saldoAwal -= (Number(k.nominal) || 0);
+      });
+
+      // 2. Hitung Rekap Per Bulan di Tahun Target
+      const rekapBulan = BULAN_LIST.map((namaBulan, idx) => {
+        let pend = 0;
+        let bulanan = 0;
+        let keluar = 0;
+
+        stateTrx.forEach(t => {
+          if ((t.statusTrx || 'Aktif') !== 'Aktif') return;
+          const dt = toJsDate(t);
+          if (dt.getFullYear() === targetYear && dt.getMonth() === idx) {
+            const nom = Number(t.nominal) || 0;
+            if ((t.tipeIuran || '').toLowerCase() === 'pendaftaran') pend += nom;
+            else bulanan += nom;
+          }
+        });
+
+        stateKeluar.forEach(k => {
+          if (k.jsDate.getFullYear() === targetYear && k.jsDate.getMonth() === idx) {
+            keluar += (Number(k.nominal) || 0);
+          }
+        });
+
+        return { bulan: namaBulan, pendaftaran: pend, bulanan, keluar, surplus: (pend + bulanan) - keluar };
+      });
+
+      const totalPendYear = rekapBulan.reduce((s, r) => s + r.pendaftaran, 0);
+      const totalBulananYear = rekapBulan.reduce((s, r) => s + r.bulanan, 0);
+      const totalMasukYear = totalPendYear + totalBulananYear;
+      const totalKeluarYear = rekapBulan.reduce((s, r) => s + r.keluar, 0);
+      const saldoAkhir = saldoAwal + totalMasukYear - totalKeluarYear;
+
+      const listKeluarYear = stateKeluar
+        .filter(k => k.jsDate.getFullYear() === targetYear)
+        .sort((a, b) => a.jsDate - b.jsDate);
+
+      currentLpjExport = { targetYear, saldoAwal, totalPendYear, totalBulananYear, totalMasukYear, totalKeluarYear, saldoAkhir, rekapBulan, listKeluarYear };
+
+      document.getElementById('lpjSaldoAwal').textContent = formatRupiah(saldoAwal);
+      document.getElementById('lpjTotalMasuk').textContent = formatRupiah(totalMasukYear);
+      document.getElementById('lpjDetailSubMasuk').textContent = `Bulanan ${formatRupiah(totalBulananYear)} • Daftar ${formatRupiah(totalPendYear)}`;
+      document.getElementById('lpjTotalKeluar').textContent = formatRupiah(totalKeluarYear);
+      document.getElementById('lpjSaldoAkhir').textContent = formatRupiah(saldoAkhir);
+
+      document.getElementById('lpjBulananBody').innerHTML = rekapBulan.map(r => `
+        <tr class="hover:bg-slate-50">
+          <td class="px-4 py-2.5 font-semibold text-slate-800">${r.bulan}</td>
+          <td class="px-4 py-2.5 text-right text-slate-600">${formatRupiah(r.pendaftaran)}</td>
+          <td class="px-4 py-2.5 text-right text-emerald-700 font-medium">${formatRupiah(r.bulanan)}</td>
+          <td class="px-4 py-2.5 text-right text-rose-600 font-medium">${formatRupiah(r.keluar)}</td>
+          <td class="px-4 py-2.5 text-right font-bold ${r.surplus >= 0 ? 'text-slate-900' : 'text-rose-700'}">${formatRupiah(r.surplus)}</td>
+        </tr>
+      `).join('');
+
+      const keluarBody = document.getElementById('lpjKeluarBody');
+      keluarBody.innerHTML = listKeluarYear.length
+        ? listKeluarYear.map(k => `
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-2.5 whitespace-nowrap text-slate-500">${k.jsDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+              <td class="px-4 py-2.5"><span class="px-2 py-0.5 text-[11px] font-bold rounded bg-rose-50 text-rose-700">${k.kategori}</span></td>
+              <td class="px-4 py-2.5 text-slate-700">${k.keterangan}</td>
+              <td class="px-4 py-2.5 text-right font-bold text-rose-600 whitespace-nowrap">${formatRupiah(k.nominal)}</td>
+            </tr>
+          `).join('')
+        : `<tr><td colspan="4" class="px-4 py-5 text-center text-xs text-slate-400 italic">Belum ada pengeluaran pada tahun ${targetYear}.</td></tr>`;
+    };
+
+    // Ekspor LPJ ke Excel (.xlsx)
+    window.downloadLpjExcel = function() {
+      if (!currentLpjExport) return;
+      const d = currentLpjExport;
+      const wb = XLSX.utils.book_new();
+
+      const rowsRingkasan = [
+        [`LAPORAN PERTANGGUNGJAWABAN KEUANGAN RUKEM GBP TAHUN ${d.targetYear}`],
+        [],
+        ['POSISI KAS TAHUNAN', 'NOMINAL (Rp)'],
+        ['Saldo Awal Tahun', d.saldoAwal],
+        ['Pemasukan Iuran Pendaftaran', d.totalPendYear],
+        ['Pemasukan Iuran Bulanan', d.totalBulananYear],
+        ['Total Pemasukan Tahun Ini', d.totalMasukYear],
+        ['Total Pengeluaran Tahun Ini', d.totalKeluarYear],
+        ['SALDO AKHIR KAS TAHUN ' + d.targetYear, d.saldoAkhir],
+        [],
+        ['REKAPITULASI MUTASI BULANAN', '', '', '', ''],
+        ['Bulan', 'Iuran Pendaftaran', 'Iuran Bulanan', 'Pengeluaran Kas', 'Surplus / Defisit'],
+        ...d.rekapBulan.map(r => [r.bulan, r.pendaftaran, r.bulanan, r.keluar, r.surplus])
+      ];
+
+      const rowsKeluar = [
+        ['Tanggal', 'Kategori', 'Keterangan', 'Nominal (Rp)'],
+        ...d.listKeluarYear.map(k => [
+          k.jsDate.toLocaleDateString('id-ID'),
+          k.kategori,
+          k.keterangan,
+          Number(k.nominal) || 0
+        ])
+      ];
+
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rowsRingkasan), 'Ringkasan_LPJ');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rowsKeluar), 'Rincian_Pengeluaran');
+      XLSX.writeFile(wb, `LPJ_Rukem_GBP_${d.targetYear}.xlsx`);
+    };
+
+    // Ekspor LPJ ke PDF (.pdf)
+    window.downloadLpjPdf = function() {
+      if (!currentLpjExport) return;
+      const d = currentLpjExport;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(14);
+      doc.text(`LAPORAN PERTANGGUNGJAWABAN KEUANGAN`, 14, 16);
+      doc.setFontSize(10);
+      doc.text(`Rukun Kematian Perumahan Griya Buring Permai • Tahun Buku ${d.targetYear}`, 14, 22);
+
+      doc.autoTable({
+        startY: 28,
+        head: [['Uraian Posisi Kas', 'Nominal']],
+        body: [
+          ['Saldo Awal Tahun', formatRupiah(d.saldoAwal)],
+          ['Total Pemasukan (Pendaftaran + Bulanan)', formatRupiah(d.totalMasukYear)],
+          ['Total Pengeluaran Kas', formatRupiah(d.totalKeluarYear)],
+          [`Saldo Akhir Kas Tahun ${d.targetYear}`, formatRupiah(d.saldoAkhir)]
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [15, 23, 42] }
+      });
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 8,
+        head: [['Bulan', 'Pendaftaran', 'Bulanan', 'Pengeluaran', 'Surplus/Defisit']],
+        body: d.rekapBulan.map(r => [
+          r.bulan,
+          formatRupiah(r.pendaftaran),
+          formatRupiah(r.bulanan),
+          formatRupiah(r.keluar),
+          formatRupiah(r.surplus)
+        ]),
+        theme: 'striped',
+        headStyles: { fillColor: [5, 150, 105] },
+        styles: { fontSize: 8 }
+      });
+
+      if (d.listKeluarYear.length > 0) {
+        doc.autoTable({
+          startY: doc.lastAutoTable.finalY + 8,
+          head: [['Tanggal', 'Kategori', 'Keterangan', 'Nominal']],
+          body: d.listKeluarYear.map(k => [
+            k.jsDate.toLocaleDateString('id-ID'),
+            k.kategori,
+            k.keterangan,
+            formatRupiah(k.nominal)
+          ]),
+          theme: 'striped',
+          headStyles: { fillColor: [225, 29, 72] },
+          styles: { fontSize: 8 }
+        });
+      }
+
+      doc.save(`LPJ_Rukem_GBP_${d.targetYear}.pdf`);
+    };
+
+    // =========================================================================
+    // 6. NAVIGASI TAB & TEMA
+    // =========================================================================
+    window.switchPublicTab = function(tabName) {
+      ['beranda', 'pengeluaran', 'monitoring', 'laporan'].forEach(t => {
+        document.getElementById('pcontent-' + t).classList.add('hidden');
+        document.getElementById('ptab-' + t).className = 'py-3.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 shrink-0 cursor-pointer';
+      });
+      document.getElementById('pcontent-' + tabName).classList.remove('hidden');
+      document.getElementById('ptab-' + tabName).className = 'py-3.5 text-xs sm:text-sm font-bold border-b-2 border-emerald-600 text-emerald-600 flex items-center gap-2 shrink-0 cursor-pointer';
+    };
+
+    window.switchTheme = function(themeName) {
+      localStorage.setItem('si-ik-theme', themeName);
+      const isLedger = themeName === 'ledger';
+
+      document.getElementById('theme-default-container').classList.toggle('hidden', isLedger);
+      document.getElementById('theme-ledger-container').classList.toggle('hidden', !isLedger);
+      document.getElementById('theme-default-cari').classList.toggle('hidden', isLedger);
+      document.getElementById('theme-ledger-cari').classList.toggle('hidden', !isLedger);
+      document.getElementById('theme-default-result').classList.toggle('hidden', isLedger);
+      document.getElementById('theme-ledger-result').classList.toggle('hidden', !isLedger);
+
+      const btn1 = document.getElementById('btnThemeDefault');
+      const btn2 = document.getElementById('btnThemeLedger');
+      if (isLedger) {
+        btn1.className = 'text-xs font-bold px-4 py-2 rounded-lg text-slate-600 cursor-pointer transition-all';
+        btn2.className = 'text-xs font-bold px-4 py-2 rounded-lg bg-white text-emerald-700 shadow-sm cursor-pointer transition-all';
+      } else {
+        btn1.className = 'text-xs font-bold px-4 py-2 rounded-lg bg-white text-emerald-700 shadow-sm cursor-pointer transition-all';
+        btn2.className = 'text-xs font-bold px-4 py-2 rounded-lg text-slate-600 cursor-pointer transition-all';
+      }
+    };
+
+    window.toggleModal = function(modalId) {
+      const modal = document.getElementById(modalId);
+      modal.classList.toggle('hidden');
+      modal.classList.toggle('flex');
+    };
+
+    // Inisialisasi Tema Awal
+    window.switchTheme(localStorage.getItem('si-ik-theme') || 'default');
+  </script>
+</body>
+</html>
